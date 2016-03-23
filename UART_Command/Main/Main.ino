@@ -10,15 +10,19 @@
 #define opcode_ret_base char(0xA0)
 #define opcode_fail char(0xFA)
 
-#define wellpin1 5
-#define wellpin2 4
-#define wellpin3 3
-#define wellpin4 2
+#define posi_bit0 2
+#define posi_bit1 3
+#define posi_bit2 4
+#define posi_bit3 5
 
-#define leftuppin1 6
-#define leftuppin2 7
-#define leftuppin3 8
-#define leftuppin4 9
+#define wellmuxinput  A0
+
+#define leftup_bit0 6
+#define leftup_bit1 7
+#define leftup_bit2 8
+#define leftup_bit3 9
+
+#define leftupmuxoutput  A1
 
 char Command[10];
 char RXD_buffer;
@@ -67,18 +71,26 @@ void setup() {
   myPID.SetSampleTime(SampleTime);
   myPID.SetMode(AUTOMATIC);
 //----PID----
-pinMode(wellpin1,INPUT);
-pinMode(wellpin2,INPUT);
-pinMode(wellpin3,INPUT);
-pinMode(wellpin4,INPUT);
-pinMode(leftuppin1,OUTPUT);
-pinMode(leftuppin2,OUTPUT);
-pinMode(leftuppin3,OUTPUT);
-pinMode(leftuppin4,OUTPUT);
-digitalWrite(leftuppin1,false);
-digitalWrite(leftuppin2,false);
-digitalWrite(leftuppin3,false);
-digitalWrite(leftuppin4,false);
+pinMode(posi_bit0,OUTPUT);
+pinMode(posi_bit1,OUTPUT);
+pinMode(posi_bit2,OUTPUT);
+pinMode(posi_bit3,OUTPUT);
+digitalWrite(posi_bit0,false);
+digitalWrite(posi_bit1,false);
+digitalWrite(posi_bit2,false);
+digitalWrite(posi_bit3,false);
+pinMode(wellmuxinput,INPUT);
+
+pinMode(leftup_bit0,OUTPUT);
+pinMode(leftup_bit1,OUTPUT);
+pinMode(leftup_bit2,OUTPUT);
+pinMode(leftup_bit3,OUTPUT);
+digitalWrite(leftup_bit0,false);
+digitalWrite(leftup_bit1,false);
+digitalWrite(leftup_bit2,false);
+digitalWrite(leftup_bit3,false);
+pinMode(leftupmuxoutput,OUTPUT);
+digitalWrite(leftupmuxoutput,false);
 }
 
 void loop() {
