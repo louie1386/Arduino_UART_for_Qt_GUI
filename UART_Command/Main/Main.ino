@@ -1,6 +1,22 @@
 #define Qtserial Serial1
 #define debugserial Serial
-#define PIDserial Serial2
+
+//----PID----
+#include <PID_v1.h>
+#define Data_size 10
+#define SampleTime 100
+#define DispTime 100
+
+#define H_Transistor A14
+#define H_Thermistor A15
+
+#define C_Transistor A12
+#define C_Thermistor A13
+
+#define I_Thermistor A11
+#define case_Thermistor A10
+#define cham_Thermistor A9
+//----PID----
 
 #define command_tag char(0xAA)
 #define opcode_output char(0x00)
@@ -10,55 +26,63 @@
 #define opcode_ret_base char(0xA0)
 #define opcode_fail char(0xFA)
 
-#define posi_bit0 2
-#define posi_bit1 3
-#define posi_bit2 4
-#define posi_bit3 5
+#define posi_bit0 22
+#define posi_bit1 24
+#define posi_bit2 26
+#define posi_bit3 28
 
-#define wellmuxinput  A0
+#define wellmuxinput  30
 
-#define leftup_bit0 6
-#define leftup_bit1 7
-#define leftup_bit2 8
-#define leftup_bit3 9
+#define leftup_bit0 23
+#define leftup_bit1 25
+#define leftup_bit2 27
+#define leftup_bit3 29
 
-#define leftupmuxoutput  A1
+#define leftupmuxoutput  31
 
-char Command[10];
+#define TXRX_log  0
+#define HPID_log  1
+#define CPID_log  2
+
+int debug_print_flag = TXRX_log;
+
+char Command[20];
 char RXD_buffer;
 int RXD_counter = 0;
 int RXD_length = 0;
 int RXD_cks = 0;
 int comm_num = 0;
 
-double setting_temp = 25;
-double real_temp = 25;
+double Setting_H_temp = 25;
+double Real_H_temp = 25;
+
+double Setting_C_temp = 10;
+double Real_C_temp = 25;
+
+double Real_I_temp = 20.5;
+double Real_case_temp = 20.5;
+double Real_cham_temp = 20.5;
 
 char trigger_point_1;
 char trigger_point_2;
 
 //----PID----
-#include <PID_v1.h>
-#define Data_size 10
-#define SampleTime 100
-#define DispTime 100
-#define Transistor A14
-#define Thermistor A7
-
-// Add some consts of the signal filter
 int index=0;
-double Temp_array[Data_size];
+double H_Temp_array[Data_size];
+double C_Temp_array[Data_size];
+double I_Temp_array[Data_size];
+double case_Temp_array[Data_size];
+double cham_Temp_array[Data_size];
 
-//Define Variables we'll be connecting to
-double PIDtargetTh = 94 , ThVolt, T, R;
-const int ThTransistorPin = Transistor;                                                  // Analog output pin that the transistor is attached to
-const int ThermistorPin = Thermistor;
-int sensorValue = 0 ;
+double H_ThVolt;
+double C_ThVolt;
+
 unsigned long LastTime = 0 ;
-
 //Specify the links and initial tuning parameters
-double Kp=256, Ki=0, Kd=0;
-PID myPID(&T, &ThVolt, &PIDtargetTh, Kp, Ki, Kd, DIRECT);
+double HKp=256, HKi=0, HKd=0;
+double CKp=256, CKi=0, CKd=0;
+PID HPID(&Real_H_temp, &H_ThVolt, &Setting_H_temp, HKp, HKi, HKd, DIRECT);
+PID CPID(&Real_C_temp, &C_ThVolt, &Setting_C_temp, CKp, CKi, CKd, REVERSE);
 //----PID----
 
 void setup() {
@@ -66,10 +90,12 @@ void setup() {
   Qtserial.begin(9600);
   debugserial.begin(9600);
 //----PID----
-  PIDserial.begin(9600);
-  myPID.SetOutputLimits(0, 255);
-  myPID.SetSampleTime(SampleTime);
-  myPID.SetMode(AUTOMATIC);
+  HPID.SetOutputLimits(0, 255);
+  HPID.SetSampleTime(SampleTime);
+  HPID.SetMode(AUTOMATIC);
+  CPID.SetOutputLimits(0, 255);
+  CPID.SetSampleTime(SampleTime);
+  CPID.SetMode(AUTOMATIC);
 //----PID----
 pinMode(posi_bit0,OUTPUT);
 pinMode(posi_bit1,OUTPUT);
@@ -95,10 +121,9 @@ digitalWrite(leftupmuxoutput,false);
 
 void loop() {
   // put your main code here, to run repeatedly:
-  //----connect command & PID----
-  PIDtargetTh = setting_temp;
-  real_temp = T;
-  //----connect command & PID----
+  if (debugserial.available() > 0) {
+    debug_print_flag = debugserial.read() - 48;
+  }
   if (Qtserial.available() > 0) {
     RXD_buffer = RXD();
     if(RXD_buffer == command_tag && RXD_counter == 0){
@@ -128,15 +153,48 @@ void loop() {
     RXD_counter++;
     }
 //----PID----
-  thermistor();
-  myPID.Compute();
-  analogWrite(ThTransistorPin, ThVolt);
+  H_Temp_array[index] = thermistor(H_Thermistor);
+  Real_H_temp = T_avg(H_Temp_array);
+  
+  C_Temp_array[index] = thermistor(C_Thermistor);
+  Real_C_temp = T_avg(C_Temp_array);
+
+  I_Temp_array[index] = thermistor(I_Thermistor);
+  Real_I_temp = T_avg(I_Temp_array);
+
+  case_Temp_array[index] = thermistor(case_Thermistor);
+  Real_case_temp = T_avg(case_Temp_array);
+
+  cham_Temp_array[index] = thermistor(cham_Thermistor);
+  Real_cham_temp = T_avg(cham_Temp_array);
+  
+  index = (index + 1)%Data_size;
+  
+  HPID.Compute();
+  CPID.Compute();
+  
+  if(H_ThVolt == NAN)
+    H_ThVolt = 255;
+  if(C_ThVolt == NAN)
+    C_ThVolt = 255;
+    
+  analogWrite(H_Transistor, H_ThVolt);
+  analogWrite(C_Transistor, C_ThVolt);
+  
   if(millis()-LastTime >= DispTime){
     LastTime=millis();
-    PIDserial.print("Temperature\t");
-    PIDserial.print(T);
-    PIDserial.print("\tVolt%\t");
-    PIDserial.println(ThVolt); 
+    if(debug_print_flag == HPID_log){
+      debugserial.print("Temperature Th\t");
+      debugserial.print(Real_H_temp);
+      debugserial.print("\tVolt%\t");
+      debugserial.println(H_ThVolt); 
+    }
+    else if(debug_print_flag == CPID_log){
+      debugserial.print("Temperature TE\t");
+      debugserial.print(Real_C_temp);
+      debugserial.print("\tVolt%\t");
+      debugserial.println(C_ThVolt); 
+    }
   }
 //----PID----
     delay(20);

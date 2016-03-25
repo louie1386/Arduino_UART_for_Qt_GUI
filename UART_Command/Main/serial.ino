@@ -1,13 +1,15 @@
 char RXD(){
   char rxstr;
   rxstr = Qtserial.read();
-  debug_serial_print(rxstr, true);
+  if(debug_print_flag == TXRX_log)
+    debug_serial_print(rxstr, true);
   return rxstr;
   }
 
 char TXD(char txstr){
   Qtserial.print(txstr);
-  debug_serial_print(txstr, false);
+  if(debug_print_flag == TXRX_log)
+    debug_serial_print(txstr, false);
   return txstr;
   }
 
