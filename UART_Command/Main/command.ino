@@ -39,7 +39,7 @@ void Command_run(char *command_str){
       //----connect command & well input----
       cks = 0;
       TXD(command_tag); //command_tag
-      TXD(char(0x0E)); //length
+      TXD(char(0x10)); //length
       cks += TXD(char(opcode_output + opcode_ret_base)); //opcode
       cks += TXD(char(real_H_temp_int));
       cks += TXD(char(real_H_temp_deg));
@@ -52,6 +52,8 @@ void Command_run(char *command_str){
       cks += TXD(char(real_case_temp_deg)); 
       cks += TXD(char(real_cham_temp_int));
       cks += TXD(char(real_cham_temp_deg));   
+      cks += TXD(char(Fan1_sec));
+      cks += TXD(char(Fan2_sec));
       cks += TXD(char(trigger_point_1)); //trigger_point
       cks += TXD(char(trigger_point_2)); //trigger_point
       cks = 0x100 - (cks % 0x100);

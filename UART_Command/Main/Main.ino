@@ -16,6 +16,9 @@
 #define I_Thermistor A11
 #define case_Thermistor A10
 #define cham_Thermistor A9
+
+#define Fan1 20
+#define Fan2 21
 //----PID----
 
 #define command_tag char(0xAA)
@@ -43,6 +46,7 @@
 #define TXRX_log  0
 #define HPID_log  1
 #define CPID_log  2
+#define FanC_log  3
 
 int debug_print_flag = TXRX_log;
 
@@ -53,7 +57,7 @@ int RXD_length = 0;
 int RXD_cks = 0;
 int comm_num = 0;
 
-double Setting_H_temp = 25;
+double Setting_H_temp = 94;
 double Real_H_temp = 25;
 
 double Setting_C_temp = 10;
@@ -84,6 +88,11 @@ double CKp=256, CKi=0, CKd=0;
 PID HPID(&Real_H_temp, &H_ThVolt, &Setting_H_temp, HKp, HKi, HKd, DIRECT);
 PID CPID(&Real_C_temp, &C_ThVolt, &Setting_C_temp, CKp, CKi, CKd, REVERSE);
 //----PID----
+
+unsigned int Fan1_sum = 0;
+unsigned int Fan2_sum = 0;
+unsigned int Fan1_sec = 0;
+unsigned int Fan2_sec = 0;
 
 void setup() {
   // put your setup code here, to run once:
@@ -117,12 +126,20 @@ digitalWrite(leftup_bit2,false);
 digitalWrite(leftup_bit3,false);
 pinMode(leftupmuxoutput,OUTPUT);
 digitalWrite(leftupmuxoutput,false);
+
+pinMode(Fan1,INPUT);
+pinMode(Fan2,INPUT);
+attachInterrupt(digitalPinToInterrupt(Fan1), FanCounter1, RISING);
+attachInterrupt(digitalPinToInterrupt(Fan2), FanCounter2, RISING);
 }
 
 void loop() {
   // put your main code here, to run repeatedly:
   if (debugserial.available() > 0) {
     debug_print_flag = debugserial.read() - 48;
+    debugserial.println("");
+    debugserial.print("Output log: ");
+    debugserial.println(debug_print_flag);
   }
   if (Qtserial.available() > 0) {
     RXD_buffer = RXD();
@@ -180,9 +197,14 @@ void loop() {
     
   analogWrite(H_Transistor, H_ThVolt);
   analogWrite(C_Transistor, C_ThVolt);
-  
+//----PID----
   if(millis()-LastTime >= DispTime){
     LastTime=millis();
+    Fan1_sec = Fan1_sum;
+    Fan2_sec = Fan2_sum;
+    Fan1_sum = 0;
+    Fan2_sum = 0;
+    
     if(debug_print_flag == HPID_log){
       debugserial.print("Temperature Th\t");
       debugserial.print(Real_H_temp);
@@ -195,7 +217,12 @@ void loop() {
       debugserial.print("\tVolt%\t");
       debugserial.println(C_ThVolt); 
     }
+    else if(debug_print_flag == FanC_log){
+      debugserial.print("Fan1: ");
+      debugserial.print(Fan1_sec);
+      debugserial.print(" Fan2: ");
+      debugserial.println(Fan2_sec);
+    }
   }
-//----PID----
     delay(20);
 }
