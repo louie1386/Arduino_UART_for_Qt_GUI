@@ -1,7 +1,9 @@
 double thermistor(int pin){
   double R, Te;
   int sensorValue = 0 ;
-  sensorValue = analogRead(pin);            
+  sensorValue = analogRead(pin);   
+  if(sensorValue == 1023)
+     sensorValue = 1022;        
   R = (4.7*sensorValue)/(1023-sensorValue);
   Te = 162.1-33.76*log(R)+0.18898*log(R)*log(R)*log(R);
   return Te;
