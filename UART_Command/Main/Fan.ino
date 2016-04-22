@@ -5,3 +5,11 @@ void FanCounter1(){
 void FanCounter2(){
   Fan2_sum++;
 }
+
+void FanCounter3(){
+  Fan3_sum++;
+}
+
+void FanCounter4(){
+  Fan4_sum++;
+}

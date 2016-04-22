@@ -1,26 +1,42 @@
-#define Qtserial Serial1
+#define Qtserial Serial2
 #define debugserial Serial
+//---Pin def---
+#define H_Transistor    A15
+#define C_Transistor    A14
 
-//----PID----
-#include <PID_v1.h>
-#define Data_size 10
-#define SampleTime 100
-#define DispTime 100
-
-#define H_Transistor A14
-#define H_Thermistor A15
-
-#define C_Transistor A12
-#define C_Thermistor A13
-
-#define I_Thermistor A11
+#define H_Thermistor    A13
+#define C_Thermistor    A12
+#define I_Thermistor    A11
 #define case_Thermistor A10
 #define cham_Thermistor A9
 
-#define Fan1 20
-#define Fan2 21
-//----PID----
+#define well_bit0       22
+#define well_bit1       24
+#define well_bit2       26
+#define well_bit3       28
+#define wellmuxinput    30
 
+#define leftup_bit0     23
+#define leftup_bit1     25
+#define leftup_bit2     27
+#define leftup_bit3     29
+#define leftupmuxoutput 31
+
+#define Fan1            21
+#define Fan2            20
+#define Fan3            19
+#define Fan4            18
+
+#define Fan_Power_en    53
+//---Pin end---
+
+//----PID def----
+#include <PID_v1.h>
+#define Data_size 10
+#define SampleTime 100
+#define DispTime 1000
+
+//----PID end----
 #define command_tag char(0xAA)
 #define opcode_output char(0x00)
 #define opcode_input char(0x01)
@@ -28,20 +44,6 @@
 
 #define opcode_ret_base char(0xA0)
 #define opcode_fail char(0xFA)
-
-#define posi_bit0 22
-#define posi_bit1 24
-#define posi_bit2 26
-#define posi_bit3 28
-
-#define wellmuxinput  30
-
-#define leftup_bit0 23
-#define leftup_bit1 25
-#define leftup_bit2 27
-#define leftup_bit3 29
-
-#define leftupmuxoutput  31
 
 #define TXRX_log  0
 #define HPID_log  1
@@ -91,8 +93,18 @@ PID CPID(&Real_C_temp, &C_ThVolt, &Setting_C_temp, CKp, CKi, CKd, REVERSE);
 
 unsigned int Fan1_sum = 0;
 unsigned int Fan2_sum = 0;
+unsigned int Fan3_sum = 0;
+unsigned int Fan4_sum = 0;
+
 unsigned int Fan1_sec = 0;
 unsigned int Fan2_sec = 0;
+unsigned int Fan3_sec = 0;
+unsigned int Fan4_sec = 0;
+
+bool Fan1_status = false;
+bool Fan2_status = false;
+bool Fan3_status = false;
+bool Fan4_status = false;
 
 void setup() {
   // put your setup code here, to run once:
@@ -106,14 +118,14 @@ void setup() {
   CPID.SetSampleTime(SampleTime);
   CPID.SetMode(AUTOMATIC);
 //----PID----
-pinMode(posi_bit0,OUTPUT);
-pinMode(posi_bit1,OUTPUT);
-pinMode(posi_bit2,OUTPUT);
-pinMode(posi_bit3,OUTPUT);
-digitalWrite(posi_bit0,false);
-digitalWrite(posi_bit1,false);
-digitalWrite(posi_bit2,false);
-digitalWrite(posi_bit3,false);
+pinMode(well_bit0,OUTPUT);
+pinMode(well_bit1,OUTPUT);
+pinMode(well_bit2,OUTPUT);
+pinMode(well_bit3,OUTPUT);
+digitalWrite(well_bit0,false);
+digitalWrite(well_bit1,false);
+digitalWrite(well_bit2,false);
+digitalWrite(well_bit3,false);
 pinMode(wellmuxinput,INPUT);
 
 pinMode(leftup_bit0,OUTPUT);
@@ -129,8 +141,16 @@ digitalWrite(leftupmuxoutput,false);
 
 pinMode(Fan1,INPUT);
 pinMode(Fan2,INPUT);
+pinMode(Fan3,INPUT);
+pinMode(Fan4,INPUT);
+
 attachInterrupt(digitalPinToInterrupt(Fan1), FanCounter1, RISING);
 attachInterrupt(digitalPinToInterrupt(Fan2), FanCounter2, RISING);
+attachInterrupt(digitalPinToInterrupt(Fan3), FanCounter3, RISING);
+attachInterrupt(digitalPinToInterrupt(Fan4), FanCounter4, RISING);
+
+pinMode(Fan_Power_en,OUTPUT);
+digitalWrite(Fan_Power_en,true);
 }
 
 void loop() {
@@ -198,12 +218,19 @@ void loop() {
   analogWrite(H_Transistor, H_ThVolt);
   analogWrite(C_Transistor, C_ThVolt);
 //----PID----
+  
   if(millis()-LastTime >= DispTime){
     LastTime=millis();
+    
     Fan1_sec = Fan1_sum;
     Fan2_sec = Fan2_sum;
+    Fan3_sec = Fan3_sum;
+    Fan4_sec = Fan4_sum;
+    
     Fan1_sum = 0;
     Fan2_sum = 0;
+    Fan3_sum = 0;
+    Fan4_sum = 0;
     
     if(debug_print_flag == HPID_log){
       debugserial.print("Temperature Th\t");
@@ -218,11 +245,15 @@ void loop() {
       debugserial.println(C_ThVolt); 
     }
     else if(debug_print_flag == FanC_log){
-      debugserial.print("Fan1: ");
+      debugserial.print(" Fan1: ");
       debugserial.print(Fan1_sec);
       debugserial.print(" Fan2: ");
-      debugserial.println(Fan2_sec);
+      debugserial.print(Fan2_sec);
+      debugserial.print(" Fan3: ");
+      debugserial.print(Fan3_sec);
+      debugserial.print(" Fan4: ");
+      debugserial.println(Fan4_sec);
     }
   }
-    delay(20);
+    delay(1);
 }

@@ -21,25 +21,25 @@ void Command_run(char *command_str){
       trigger_point_1 = 0;
       trigger_point_2 = 0;
       for(int i=0;i<6;i++){
-        digitalWrite(posi_bit0, bitRead(i, 0));
-        digitalWrite(posi_bit1, bitRead(i, 1));
-        digitalWrite(posi_bit2, bitRead(i, 2));
-        digitalWrite(posi_bit3, bitRead(i, 3));
+        digitalWrite(well_bit0, bitRead(i, 0));
+        digitalWrite(well_bit1, bitRead(i, 1));
+        digitalWrite(well_bit2, bitRead(i, 2));
+        digitalWrite(well_bit3, bitRead(i, 3));
         delay(1);
         bitWrite(trigger_point_1, i, digitalRead(wellmuxinput));
         }
       for(int i=6;i<12;i++){
-        digitalWrite(posi_bit0, bitRead(i, 0));
-        digitalWrite(posi_bit1, bitRead(i, 1));
-        digitalWrite(posi_bit2, bitRead(i, 2));
-        digitalWrite(posi_bit3, bitRead(i, 3));
+        digitalWrite(well_bit0, bitRead(i, 0));
+        digitalWrite(well_bit1, bitRead(i, 1));
+        digitalWrite(well_bit2, bitRead(i, 2));
+        digitalWrite(well_bit3, bitRead(i, 3));
         delay(1);
         bitWrite(trigger_point_2, (i-6), digitalRead(wellmuxinput));
         }        
       //----connect command & well input----
       cks = 0;
       TXD(command_tag); //command_tag
-      TXD(char(0x10)); //length
+      TXD(char(0x12)); //length
       cks += TXD(char(opcode_output + opcode_ret_base)); //opcode
       cks += TXD(char(real_H_temp_int));
       cks += TXD(char(real_H_temp_deg));
@@ -54,6 +54,8 @@ void Command_run(char *command_str){
       cks += TXD(char(real_cham_temp_deg));   
       cks += TXD(char(Fan1_sec));
       cks += TXD(char(Fan2_sec));
+      cks += TXD(char(Fan3_sec));
+      cks += TXD(char(Fan4_sec));
       cks += TXD(char(trigger_point_1)); //trigger_point
       cks += TXD(char(trigger_point_2)); //trigger_point
       cks = 0x100 - (cks % 0x100);
