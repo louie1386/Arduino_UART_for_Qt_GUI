@@ -1,8 +1,8 @@
 #define Qtserial Serial2
 #define debugserial Serial
 //---Pin def---
-#define H_Transistor    A15
-#define C_Transistor    A14
+#define H_Transistor    51
+#define C_Transistor    49
 
 #define H_Thermistor    A13
 #define C_Thermistor    A12
