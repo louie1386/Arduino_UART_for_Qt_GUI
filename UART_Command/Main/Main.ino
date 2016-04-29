@@ -1,6 +1,7 @@
 #define Qtserial Serial2
 #define debugserial Serial
-//---Pin def---
+
+//---Pin def---------------------------------------------------------------------------
 #define H_Transistor    51
 #define C_Transistor    49
 
@@ -26,38 +27,63 @@
 #define Fan2            20
 #define Fan3            19
 #define Fan4            18
-
 #define Fan_Power_en    53
-//---Pin end---
 
-//----PID def----
-#include <PID_v1.h>
-#define Data_size 10
-#define SampleTime 100
-#define DispTime 1000
+#define PD_bit0       46
+#define PD_bit1       48
+#define PD_bit2       50
+#define PD_bit3       52
+#define PDmuxinput    A15
+#define LED_en        44
 
-//----PID end----
-#define command_tag char(0xAA)
-#define opcode_output char(0x00)
-#define opcode_input char(0x01)
-#define opcode_lu char(0x02)
+//---Op code---------------------------------------------------------------------------
+#define command_tag           char(0xAA)
+#define opcode_readstatus     char(0x00)
+#define opcode_writesetting   char(0x01)
+#define opcode_liftup         char(0x02)
+#define opcode_ledsw          char(0x03)
+#define opcode_pdget          char(0x04)
 
 #define opcode_ret_base char(0xA0)
-#define opcode_fail char(0xFA)
+#define opcode_fail     char(0xFA)
 
-#define TXRX_log  0
-#define HPID_log  1
-#define CPID_log  2
-#define FanC_log  3
+//---Log IO ---------------------------------------------------------------------------
+#define TXRX_log  '0'
+#define HPID_log  '1'
+#define CPID_log  '2'
+#define FanC_log  '3'
+char debug_print_flag = TXRX_log;
 
-int debug_print_flag = TXRX_log;
+#define NoTest    '.'
+#define LEDon     'n'
+#define LEDoff    'f'
+#define PDget     'p'
+char Test_flag = NoTest;
 
+//---TXRX-------------------------------------------------------------------------------
 char Command[20];
 char RXD_buffer;
 int RXD_counter = 0;
 int RXD_length = 0;
 int RXD_cks = 0;
 int comm_num = 0;
+
+//----Well Status-----------------------------------------------------------------------
+char trigger_point_1;
+char trigger_point_2;
+
+//----PID def---------------------------------------------------------------------------
+#include <PID_v1.h>
+#define Data_size 10
+#define SampleTime 100
+#define DispTime 1000
+
+int index=0;
+double H_Temp_array[Data_size];
+double C_Temp_array[Data_size];
+double I_Temp_array[Data_size];
+double case_Temp_array[Data_size];
+double cham_Temp_array[Data_size];
 
 double Setting_H_temp = 94;
 double Real_H_temp = 25;
@@ -69,17 +95,6 @@ double Real_I_temp = 20.5;
 double Real_case_temp = 20.5;
 double Real_cham_temp = 20.5;
 
-char trigger_point_1;
-char trigger_point_2;
-
-//----PID----
-int index=0;
-double H_Temp_array[Data_size];
-double C_Temp_array[Data_size];
-double I_Temp_array[Data_size];
-double case_Temp_array[Data_size];
-double cham_Temp_array[Data_size];
-
 double H_ThVolt;
 double C_ThVolt;
 
@@ -89,8 +104,8 @@ double HKp=256, HKi=0, HKd=0;
 double CKp=256, CKi=0, CKd=0;
 PID HPID(&Real_H_temp, &H_ThVolt, &Setting_H_temp, HKp, HKi, HKd, DIRECT);
 PID CPID(&Real_C_temp, &C_ThVolt, &Setting_C_temp, CKp, CKi, CKd, REVERSE);
-//----PID----
 
+//----Fan------------------------------------------------------------------------------
 unsigned int Fan1_sum = 0;
 unsigned int Fan2_sum = 0;
 unsigned int Fan3_sum = 0;
@@ -101,66 +116,37 @@ unsigned int Fan2_sec = 0;
 unsigned int Fan3_sec = 0;
 unsigned int Fan4_sec = 0;
 
-bool Fan1_status = false;
-bool Fan2_status = false;
-bool Fan3_status = false;
-bool Fan4_status = false;
+//----PhotoDiode-----------------------------------------------------------------------
+#define PD_Ch_Num  2
+#define PD_Ch_St   3
 
+//----End------------------------------------------------------------------------------
 void setup() {
   // put your setup code here, to run once:
-  Qtserial.begin(9600);
-  debugserial.begin(9600);
-//----PID----
-  HPID.SetOutputLimits(0, 255);
-  HPID.SetSampleTime(SampleTime);
-  HPID.SetMode(AUTOMATIC);
-  CPID.SetOutputLimits(0, 255);
-  CPID.SetSampleTime(SampleTime);
-  CPID.SetMode(AUTOMATIC);
-//----PID----
-pinMode(well_bit0,OUTPUT);
-pinMode(well_bit1,OUTPUT);
-pinMode(well_bit2,OUTPUT);
-pinMode(well_bit3,OUTPUT);
-digitalWrite(well_bit0,false);
-digitalWrite(well_bit1,false);
-digitalWrite(well_bit2,false);
-digitalWrite(well_bit3,false);
-pinMode(wellmuxinput,INPUT);
-
-pinMode(leftup_bit0,OUTPUT);
-pinMode(leftup_bit1,OUTPUT);
-pinMode(leftup_bit2,OUTPUT);
-pinMode(leftup_bit3,OUTPUT);
-digitalWrite(leftup_bit0,false);
-digitalWrite(leftup_bit1,false);
-digitalWrite(leftup_bit2,false);
-digitalWrite(leftup_bit3,false);
-pinMode(leftupmuxoutput,OUTPUT);
-digitalWrite(leftupmuxoutput,false);
-
-pinMode(Fan1,INPUT);
-pinMode(Fan2,INPUT);
-pinMode(Fan3,INPUT);
-pinMode(Fan4,INPUT);
-
-attachInterrupt(digitalPinToInterrupt(Fan1), FanCounter1, RISING);
-attachInterrupt(digitalPinToInterrupt(Fan2), FanCounter2, RISING);
-attachInterrupt(digitalPinToInterrupt(Fan3), FanCounter3, RISING);
-attachInterrupt(digitalPinToInterrupt(Fan4), FanCounter4, RISING);
-
-pinMode(Fan_Power_en,OUTPUT);
-digitalWrite(Fan_Power_en,true);
+  serial_setup();
+  PID_setup();
+  Fan_setup();
+  Mux_wellstatus_setup();
+  Mux_leftup_setup();
+  Mux_PD_setup();
 }
 
 void loop() {
   // put your main code here, to run repeatedly:
-  if (debugserial.available() > 0) {
-    debug_print_flag = debugserial.read() - 48;
-    debugserial.println("");
-    debugserial.print("Output log: ");
-    debugserial.println(debug_print_flag);
+  
+//---SerialPort--------------------------------------------
+  if(debugserial.available() > 0) {
+    int debugread = debugserial.read();
+    if((debugread-48)<=3){
+      debug_print_flag = (char)debugread;
+      Log_Input(debug_print_flag);
+    }
+    else{
+      Test_flag = (char)debugread;
+      Test_active(Test_flag);
+    }
   }
+  
   if (Qtserial.available() > 0) {
     RXD_buffer = RXD();
     if(RXD_buffer == command_tag && RXD_counter == 0){
@@ -189,7 +175,8 @@ void loop() {
       }
     RXD_counter++;
     }
-//----PID----
+    
+//----PID------------------------------------------------------
   H_Temp_array[index] = thermistor(H_Thermistor);
   Real_H_temp = T_avg(H_Temp_array);
   
@@ -210,50 +197,15 @@ void loop() {
   HPID.Compute();
   CPID.Compute();
   
-  if(H_ThVolt == NAN)
-    H_ThVolt = 255;
-  if(C_ThVolt == NAN)
-    C_ThVolt = 255;
-    
   analogWrite(H_Transistor, H_ThVolt);
   analogWrite(C_Transistor, C_ThVolt);
-//----PID----
   
+//----Timer(1sec)-----------------------------------------------
   if(millis()-LastTime >= DispTime){
     LastTime=millis();
     
-    Fan1_sec = Fan1_sum;
-    Fan2_sec = Fan2_sum;
-    Fan3_sec = Fan3_sum;
-    Fan4_sec = Fan4_sum;
-    
-    Fan1_sum = 0;
-    Fan2_sum = 0;
-    Fan3_sum = 0;
-    Fan4_sum = 0;
-    
-    if(debug_print_flag == HPID_log){
-      debugserial.print("Temperature Th\t");
-      debugserial.print(Real_H_temp);
-      debugserial.print("\tVolt%\t");
-      debugserial.println(H_ThVolt); 
+    FanCounterOutput();    
+    Log_Output(debug_print_flag);
     }
-    else if(debug_print_flag == CPID_log){
-      debugserial.print("Temperature TE\t");
-      debugserial.print(Real_C_temp);
-      debugserial.print("\tVolt%\t");
-      debugserial.println(C_ThVolt); 
-    }
-    else if(debug_print_flag == FanC_log){
-      debugserial.print(" Fan1: ");
-      debugserial.print(Fan1_sec);
-      debugserial.print(" Fan2: ");
-      debugserial.print(Fan2_sec);
-      debugserial.print(" Fan3: ");
-      debugserial.print(Fan3_sec);
-      debugserial.print(" Fan4: ");
-      debugserial.println(Fan4_sec);
-    }
-  }
     delay(1);
 }

@@ -1,3 +1,8 @@
+void serial_setup(){
+  Qtserial.begin(9600);
+  debugserial.begin(9600);
+}
+
 char RXD(){
   char rxstr;
   rxstr = Qtserial.read();

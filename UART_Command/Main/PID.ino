@@ -1,3 +1,12 @@
+void PID_setup(){
+  HPID.SetOutputLimits(0, 255);
+  HPID.SetSampleTime(SampleTime);
+  HPID.SetMode(AUTOMATIC);
+  CPID.SetOutputLimits(0, 255);
+  CPID.SetSampleTime(SampleTime);
+  CPID.SetMode(AUTOMATIC);
+}
+
 double thermistor(int pin){
   double R, Te;
   int sensorValue = 0 ;
