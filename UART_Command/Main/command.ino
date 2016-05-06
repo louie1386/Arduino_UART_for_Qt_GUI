@@ -57,8 +57,8 @@ void Command_run(char *command_str){
       TXD(char(cks)); //check sum
     }  
     else if(opcode == opcode_liftup){
-      writech_leftup(0, data1, 6);
-      writech_leftup(6, data2, 6);
+      writech_liftup(0, data1, 6);
+      writech_liftup(6, data2, 6);
       trigger_point_1 &= data1;
       trigger_point_2 &= data2;
       }

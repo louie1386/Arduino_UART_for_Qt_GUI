@@ -11,17 +11,17 @@
 #define case_Thermistor A10
 #define cham_Thermistor A9
 
-#define well_bit0       22
-#define well_bit1       24
-#define well_bit2       26
-#define well_bit3       28
-#define wellmuxinput    30
+#define well_bit0       23
+#define well_bit1       25
+#define well_bit2       27
+#define well_bit3       29
+#define wellmuxinput    31
 
-#define leftup_bit0     23
-#define leftup_bit1     25
-#define leftup_bit2     27
-#define leftup_bit3     29
-#define leftupmuxoutput 31
+#define liftup_bit0     22
+#define liftup_bit1     24
+#define liftup_bit2     26
+#define liftup_bit3     28
+#define liftupmuxoutput 30
 
 #define Fan1            21
 #define Fan2            20
@@ -72,6 +72,12 @@ int comm_num = 0;
 char trigger_point_1;
 char trigger_point_2;
 
+//----liftup----------------------------------------------------------------------------
+#define liftup_push_times   1
+#define liftup_push_ms      10
+#define liftup_release_ms   100
+#define liftup_ch_ms        500
+
 //----PID def---------------------------------------------------------------------------
 #include <PID_v1.h>
 #define Data_size 10
@@ -117,8 +123,8 @@ unsigned int Fan3_sec = 0;
 unsigned int Fan4_sec = 0;
 
 //----PhotoDiode-----------------------------------------------------------------------
-#define PD_Ch_Num  2
-#define PD_Ch_St   3
+#define PD_Ch_Num  2 
+#define PD_Ch_St   10
 
 //----End------------------------------------------------------------------------------
 void setup() {
@@ -127,7 +133,7 @@ void setup() {
   PID_setup();
   Fan_setup();
   Mux_wellstatus_setup();
-  Mux_leftup_setup();
+  Mux_liftup_setup();
   Mux_PD_setup();
 }
 
