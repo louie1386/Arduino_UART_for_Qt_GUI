@@ -16,6 +16,9 @@ int readch_PD(int chnum, int times){
     chnum = 8;  
   int ret;
   int sum = 0;
+  int adc;
+  int data_max = 0;
+  int data_min = 10000;
 
   digitalWrite(PD_bit0, bitRead(chnum, 0));
   digitalWrite(PD_bit1, bitRead(chnum, 1));
@@ -23,9 +26,13 @@ int readch_PD(int chnum, int times){
   digitalWrite(PD_bit3, bitRead(chnum, 3));
   delay(1);
   for(int j = 0;j < times;j++){
-    sum += analogRead(PDmuxinput);     
+    adc = analogRead(PDmuxinput);
+    data_max = max(data_max, adc);
+    data_min = min(data_min, adc);
+    sum += adc;     
     delay(1);  
   }
-  ret = sum / times;
+  sum = sum - data_max - data_min;
+  ret = sum / (times-2);
   return ret;
 }

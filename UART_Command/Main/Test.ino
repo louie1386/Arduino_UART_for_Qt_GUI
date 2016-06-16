@@ -23,5 +23,8 @@ void Test_active(char flag){
       debugserial.println(ADCtoVol);
     }
   }
+  else if(flag == Autotune){
+    Autotune_en = true;
+  }
 }
 

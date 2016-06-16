@@ -6,36 +6,40 @@ void Command_run(char *command_str){
   char cks;
   
   if(opcode == opcode_readstatus){  //output real value
-      int real_H_temp_int = int(Real_H_temp);
-      int real_H_temp_deg = int((Real_H_temp - real_H_temp_int)*10);
-      int real_C_temp_int = int(Real_C_temp);
-      int real_C_temp_deg = int((Real_C_temp - real_C_temp_int)*10);
+      int Real_Temp1_int = int(Real_Temp1);
+      int Real_Temp1_deg = int((Real_Temp1 - Real_Temp1_int)*10);
+      int Real_Temp2_int = int(Real_Temp2);
+      int Real_Temp2_deg = int((Real_Temp2 - Real_Temp2_int)*10);
 
-      int real_I_temp_int = int(Real_I_temp);
-      int real_I_temp_deg = int((Real_I_temp - real_I_temp_int)*10);
-      int real_case_temp_int = int(Real_case_temp);
-      int real_case_temp_deg = int((Real_case_temp - real_case_temp_int)*10);
-      int real_cham_temp_int = int(Real_cham_temp);
-      int real_cham_temp_deg = int((Real_cham_temp - real_cham_temp_int)*10);
+      int Real_Temp3_int = int(Real_Temp3);
+      int Real_Temp3_deg = int((Real_Temp3 - Real_Temp3_int)*10);
+      int Real_Temp4_int = int(Real_Temp4);
+      int Real_Temp4_deg = int((Real_Temp4 - Real_Temp4_int)*10);
+      int Real_Temp5_int = int(Real_Temp5);
+      int Real_Temp5_deg = int((Real_Temp5 - Real_Temp5_int)*10);
+      int Real_Temp6_int = int(Real_Temp6);
+      int Real_Temp6_deg = int((Real_Temp6 - Real_Temp6_int)*10);
       //----connect command & well input----
       trigger_point_1 = readch_wellstatus(0, 6);
       trigger_point_2 = readch_wellstatus(6, 6);       
       //----connect command & well input----
       cks = 0;
       TXD(command_tag); //command_tag
-      TXD(char(0x12)); //length
+      TXD(char(0x14)); //length
       cks += TXD(char(opcode_readstatus + opcode_ret_base)); //opcode
-      cks += TXD(char(real_H_temp_int));
-      cks += TXD(char(real_H_temp_deg));
-      cks += TXD(char(real_C_temp_int));
-      cks += TXD(char(real_C_temp_deg));
+      cks += TXD(char(Real_Temp1_int));
+      cks += TXD(char(Real_Temp1_deg));
+      cks += TXD(char(Real_Temp2_int));
+      cks += TXD(char(Real_Temp2_deg));
       
-      cks += TXD(char(real_I_temp_int));
-      cks += TXD(char(real_I_temp_deg));  
-      cks += TXD(char(real_case_temp_int));
-      cks += TXD(char(real_case_temp_deg)); 
-      cks += TXD(char(real_cham_temp_int));
-      cks += TXD(char(real_cham_temp_deg));   
+      cks += TXD(char(Real_Temp3_int));
+      cks += TXD(char(Real_Temp3_deg));  
+      cks += TXD(char(Real_Temp4_int));
+      cks += TXD(char(Real_Temp4_deg)); 
+      cks += TXD(char(Real_Temp5_int));
+      cks += TXD(char(Real_Temp5_deg));   
+      cks += TXD(char(Real_Temp6_int));
+      cks += TXD(char(Real_Temp6_deg));  
       cks += TXD(char(Fan1_sec));
       cks += TXD(char(Fan2_sec));
       cks += TXD(char(Fan3_sec));
@@ -57,19 +61,22 @@ void Command_run(char *command_str){
       TXD(char(cks)); //check sum
     }  
     else if(opcode == opcode_liftup){
+      //buzzer_dis();
       writech_liftup(0, data1, 6);
       writech_liftup(6, data2, 6);
-      trigger_point_1 &= data1;
-      trigger_point_2 &= data2;
+      //if((trigger_point_1 | trigger_point_2) != 0)
+      //  buzzer_time = Buzzer_EN_msTime;
+      trigger_point_1 = readch_wellstatus(0, 6);
+      trigger_point_2 = readch_wellstatus(6, 6);       
       }
     else if(opcode == opcode_ledsw){
       if(data1 == 1){
         digitalWrite(LED_en,true);
-        Log_LED(data1);
+        //Log_LED(data1);
       }
       else if(data1 == 0){
         digitalWrite(LED_en,false);
-        Log_LED(data1);
+        //Log_LED(data1);
       }
     }
     else if(opcode == opcode_pdget){
@@ -84,6 +91,23 @@ void Command_run(char *command_str){
         cks += TXD(highByte(PD_V)); 
         cks += TXD(lowByte(PD_V));     
       }
+      cks = 0x100 - (cks % 0x100);
+      TXD(char(cks)); //check sum
+    }
+    else if(opcode == opcode_tester){
+      char testdata[2];
+      int temp_int = int(Real_TempIC);
+      int temp_deg = int((Real_TempIC - temp_int)*10);
+      
+      testdata[0] = temp_int;
+      testdata[1] = temp_deg;
+      
+      cks = 0;
+      TXD(command_tag); //command_tag
+      TXD(char(0x4)); //length
+      cks += TXD(char(opcode_tester)); //opcode
+      cks += TXD(char(testdata[0]));
+      cks += TXD(char(testdata[1]));   
       cks = 0x100 - (cks % 0x100);
       TXD(char(cks)); //check sum
     }

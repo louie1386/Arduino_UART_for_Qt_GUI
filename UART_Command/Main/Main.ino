@@ -2,14 +2,15 @@
 #define debugserial Serial
 
 //---Pin def---------------------------------------------------------------------------
-#define H_Transistor    51
-#define C_Transistor    49
+#define H_Transistor    12
+#define C_Transistor    11
 
-#define H_Thermistor    A13
-#define C_Thermistor    A12
-#define I_Thermistor    A11
-#define case_Thermistor A10
-#define cham_Thermistor A9
+#define TempPin1        A13
+#define TempPin2        A12
+#define TempPin3        A11
+#define TempPin4        A10
+#define TempPin5        A9
+#define TempPin6        A8
 
 #define well_bit0       23
 #define well_bit1       25
@@ -29,12 +30,18 @@
 #define Fan4            18
 #define Fan_Power_en    53
 
-#define PD_bit0       46
-#define PD_bit1       48
-#define PD_bit2       50
-#define PD_bit3       52
-#define PDmuxinput    A15
-#define LED_en        44
+#define PD_bit0         46
+#define PD_bit1         48
+#define PD_bit2         50
+#define PD_bit3         52
+#define PDmuxinput      A15
+#define LED_en          44
+
+#define buzzer          13
+
+#define TempIC          A14
+
+#define AutoResetPin    A0
 
 //---Op code---------------------------------------------------------------------------
 #define command_tag           char(0xAA)
@@ -44,8 +51,10 @@
 #define opcode_ledsw          char(0x03)
 #define opcode_pdget          char(0x04)
 
-#define opcode_ret_base char(0xA0)
-#define opcode_fail     char(0xFA)
+#define opcode_tester         char(0xF0)
+
+#define opcode_ret_base       char(0xA0)
+#define opcode_fail           char(0xFA)
 
 //---Log IO ---------------------------------------------------------------------------
 #define TXRX_log  '0'
@@ -58,6 +67,7 @@ char debug_print_flag = TXRX_log;
 #define LEDon     'n'
 #define LEDoff    'f'
 #define PDget     'p'
+#define Autotune  'a'
 char Test_flag = NoTest;
 
 //---TXRX-------------------------------------------------------------------------------
@@ -80,36 +90,57 @@ char trigger_point_2;
 
 //----PID def---------------------------------------------------------------------------
 #include <PID_v1.h>
-#define Data_size 10
-#define SampleTime 100
-#define DispTime 1000
+#include <PID_AutoTune_v0.h>
+#define Data_size               10
+#define SampleTime              100
+#define DispTime                1000
+#define AutoTune_TempDiffRange  1
+#define AutoTune_FailmsTime     5000
+
+#define mode_thermistor         0
+#define mode_tempIC             1
+
+#define temp1_mode  mode_thermistor
+#define temp2_mode  mode_thermistor
+#define temp3_mode  mode_thermistor
+#define temp4_mode  mode_thermistor
+#define temp5_mode  mode_thermistor
+#define temp6_mode  mode_thermistor
 
 int index=0;
-double H_Temp_array[Data_size];
-double C_Temp_array[Data_size];
-double I_Temp_array[Data_size];
-double case_Temp_array[Data_size];
-double cham_Temp_array[Data_size];
+double Temp_array1[Data_size];
+double Temp_array2[Data_size];
+double Temp_array3[Data_size];
+double Temp_array4[Data_size];
+double Temp_array5[Data_size];
+double Temp_array6[Data_size];
 
-double Setting_H_temp = 94;
-double Real_H_temp = 25;
+double TempIC_array[Data_size];
 
-double Setting_C_temp = 10;
-double Real_C_temp = 25;
+double Setting_H_temp = 0;
+double Setting_C_temp = 0;
 
-double Real_I_temp = 20.5;
-double Real_case_temp = 20.5;
-double Real_cham_temp = 20.5;
+double Real_Temp1 = 20.5;
+double Real_Temp2 = 20.5;
+double Real_Temp3 = 20.5;
+double Real_Temp4 = 20.5;
+double Real_Temp5 = 20.5;
+double Real_Temp6 = 20.5;
+
+double Real_TempIC = 20.5;
 
 double H_ThVolt;
 double C_ThVolt;
 
 unsigned long LastTime = 0 ;
 //Specify the links and initial tuning parameters
-double HKp=256, HKi=0, HKd=0;
+double HKp=200, HKi=0, HKd=70;
 double CKp=256, CKi=0, CKd=0;
-PID HPID(&Real_H_temp, &H_ThVolt, &Setting_H_temp, HKp, HKi, HKd, DIRECT);
-PID CPID(&Real_C_temp, &C_ThVolt, &Setting_C_temp, CKp, CKi, CKd, REVERSE);
+PID HPID(&Real_Temp1, &H_ThVolt, &Setting_H_temp, HKp, HKi, HKd, DIRECT);
+PID_ATune HaTune(&Real_Temp1, &H_ThVolt);
+PID CPID(&Real_Temp2, &C_ThVolt, &Setting_C_temp, CKp, CKi, CKd, REVERSE);
+
+bool Autotune_en = false;
 
 //----Fan------------------------------------------------------------------------------
 unsigned int Fan1_sum = 0;
@@ -123,8 +154,17 @@ unsigned int Fan3_sec = 0;
 unsigned int Fan4_sec = 0;
 
 //----PhotoDiode-----------------------------------------------------------------------
-#define PD_Ch_Num  2 
+#define PD_Ch_Num  8 
 #define PD_Ch_St   10
+
+//----Buzzer---------------------------------------------------------------------------
+#define Buzzer_EN_msTime  1000 
+#define Buzzer_HL_msTime  100
+int buzzer_time;
+int buzzer_subtime;
+
+//----Reset----------------------------------------------------------------------------
+#define MaxTemp 120
 
 //----End------------------------------------------------------------------------------
 void setup() {
@@ -135,6 +175,7 @@ void setup() {
   Mux_wellstatus_setup();
   Mux_liftup_setup();
   Mux_PD_setup();
+  buzzer_setup();
 }
 
 void loop() {
@@ -183,26 +224,46 @@ void loop() {
     }
     
 //----PID------------------------------------------------------
-  H_Temp_array[index] = thermistor(H_Thermistor);
-  Real_H_temp = T_avg(H_Temp_array);
+  Temp_array1[index] = realtempget(temp1_mode, TempPin1);
+  Real_Temp1 = T_avg(Temp_array1);
   
-  C_Temp_array[index] = thermistor(C_Thermistor);
-  Real_C_temp = T_avg(C_Temp_array);
+  Temp_array2[index] = realtempget(temp2_mode, TempPin2);
+  Real_Temp2 = T_avg(Temp_array2);
 
-  I_Temp_array[index] = thermistor(I_Thermistor);
-  Real_I_temp = T_avg(I_Temp_array);
+  Temp_array3[index] = realtempget(temp3_mode, TempPin3);
+  Real_Temp3 = T_avg(Temp_array3);
 
-  case_Temp_array[index] = thermistor(case_Thermistor);
-  Real_case_temp = T_avg(case_Temp_array);
+  Temp_array4[index] = realtempget(temp4_mode, TempPin4);
+  Real_Temp4 = T_avg(Temp_array4);
 
-  cham_Temp_array[index] = thermistor(cham_Thermistor);
-  Real_cham_temp = T_avg(cham_Temp_array);
+  Temp_array5[index] = realtempget(temp5_mode, TempPin5);
+  Real_Temp5 = T_avg(Temp_array5);
+
+  Temp_array6[index] = realtempget(temp6_mode, TempPin6);
+  Real_Temp6 = T_avg(Temp_array6);
+
+  TempIC_array[index] = realtempget(mode_tempIC, TempIC);
+  Real_TempIC = T_avg(TempIC_array);
   
   index = (index + 1)%Data_size;
-  
-  HPID.Compute();
+
+  byte val = HaTune.Runtime();      
+  if(val == 1 && Autotune_en == true){
+    HKp = HaTune.GetKp();
+    HKi = HaTune.GetKi();
+    HKd = HaTune.GetKd();
+    HPID.SetTunings(HKp,HKi,HKd);
+    Autotune_en = false;
+  }
+  else
+    HPID.Compute();
   CPID.Compute();
-  
+
+  if(H_ThVolt<0)
+    H_ThVolt=0;
+  if(C_ThVolt<0)
+    C_ThVolt=0;
+    
   analogWrite(H_Transistor, H_ThVolt);
   analogWrite(C_Transistor, C_ThVolt);
   
@@ -213,5 +274,8 @@ void loop() {
     FanCounterOutput();    
     Log_Output(debug_print_flag);
     }
-    delay(1);
+  //buzzer_en();
+  if(Real_Temp1 >= MaxTemp)
+    AutoReset();
+  delay(1);
 }

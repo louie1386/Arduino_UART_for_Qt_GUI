@@ -6,16 +6,32 @@ void Log_Input(char flag){
 
 void Log_Output(char flag){
   if(flag == HPID_log){
-      debugserial.print("Temperature Th\t");
-      debugserial.print(Real_H_temp);
+      debugserial.print("Target Th\t");
+      debugserial.print(Setting_H_temp);
+      debugserial.print("\tTemperature Th\t");
+      debugserial.print(Real_Temp1);
       debugserial.print("\tVolt%\t");
-      debugserial.println(H_ThVolt); 
+      debugserial.print(H_ThVolt); 
+      debugserial.print("\tKp\t");
+      debugserial.print(HKp); 
+      debugserial.print("\tKi\t");
+      debugserial.print(HKi);   
+      debugserial.print("\tKd\t");
+      debugserial.println(HKd);   
     }
     else if(flag == CPID_log){
-      debugserial.print("Temperature TE\t");
-      debugserial.print(Real_C_temp);
+      debugserial.print("Target TE\t");
+      debugserial.print(Setting_C_temp);      
+      debugserial.print("\tTemperature TE\t");
+      debugserial.print(Real_Temp2);
       debugserial.print("\tVolt%\t");
-      debugserial.println(C_ThVolt); 
+      debugserial.print(C_ThVolt); 
+      debugserial.print("\tKp\t");
+      debugserial.print(CKp); 
+      debugserial.print("\tKi\t");
+      debugserial.print(CKi);   
+      debugserial.print("\tKd\t");
+      debugserial.println(CKd);
     }
     else if(flag == FanC_log){
       debugserial.print(" Fan1: ");
